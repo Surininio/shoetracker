@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>My Shoe Collection</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#b5502e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shoes">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root {
+    --bg: #f4f3f1;
+    --card: #ffffff;
+    --text: #1c1b1a;
+    --muted: #6b6863;
+    --accent: #b5502e;
+    --accent-text: #ffffff;
+    --border: #e5e2dd;
+    --danger: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171615;
+      --card: #232220;
+      --text: #f2f0ed;
+      --muted: #a39e97;
+      --accent: #d9764f;
+      --accent-text: #1c1b1a;
+      --border: #34322f;
+      --danger: #ff6b60;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 100px;
+  }
+  header {
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    padding: 20px 16px 12px;
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+  }
+  h1 {
+    font-size: 22px;
+    margin: 0 0 4px;
+  }
+  .stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    flex: 1;
+    min-width: 90px;
+  }
+  .stat .num {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .stat .label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .search {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 15px;
+  }
+  main {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 60px 20px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: var(--bg);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+  }
+  .card-info { flex: 1; min-width: 0; }
+  .card-info .name {
+    font-weight: 600;
+    font-size: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-info .meta {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .card-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .icon-btn {
+    background: none;
+    border: none;
+    font-size: 18px;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .fab {
+    position: fixed;
+    right: 20px;
+    bottom: 24px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    font-size: 28px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    cursor: pointer;
+    z-index: 20;
+  }
+  .sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;
+    z-index: 30;
+  }
+  .sheet-backdrop.open { display: block; }
+  .sheet {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: var(--card);
+    border-radius: 18px 18px 0 0;
+    padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+    transform: translateY(100%);
+    transition: transform 0.25s ease;
+    z-index: 31;
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+  .sheet.open { transform: translateY(0); }
+  .sheet h2 {
+    margin: 0 0 14px;
+    font-size: 18px;
+  }
+  .field {
+    margin-bottom: 12px;
+  }
+  .field label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+  }
+  .photo-picker {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .photo-preview {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    background: var(--bg);
+    border: 1px dashed var(--border);
+    object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: var(--muted);
+  }
+  .row2 {
+    display: flex;
+    gap: 10px;
+  }
+  .row2 .field { flex: 1; }
+  .sheet-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-text);
+  }
+  .btn-secondary {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-danger {
+    background: none;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>My Shoe Collection</h1>
+  <div class="stats">
+    <div class="stat"><div class="num" id="statTotal">0</div><div class="label">Pairs</div></div>
+    <div class="stat"><div class="num" id="statBrands">0</div><div class="label">Brands</div></div>
+    <div class="stat"><div class="num" id="statWorn">0</div><div class="label">Worn</div></div>
+  </div>
+  <input class="search" id="search" type="search" placeholder="Search by name, brand, or color...">
+</header>
+
+<main id="list"></main>
+
+<div class="empty" id="emptyState" style="display:none;">
+  No shoes yet. Tap + to add your first pair.
+</div>
+
+<button class="fab" id="addBtn" aria-label="Add shoe">+</button>
+
+<div class="sheet-backdrop" id="backdrop"></div>
+<div class="sheet" id="sheet">
+  <h2 id="sheetTitle">Add Shoe</h2>
+  <form id="shoeForm">
+    <div class="photo-picker">
+      <img class="photo-preview" id="photoPreview">
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none;">
+      <button type="button" class="btn btn-secondary" id="photoBtn" style="flex:none; padding:10px 14px;">Choose Photo</button>
+    </div>
+    <div class="field">
+      <label for="fName">Name</label>
+      <input id="fName" required placeholder="e.g. Air Max 90">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="fBrand">Brand</label>
+        <input id="fBrand" placeholder="e.g. Nike">
+      </div>
+      <div class="field">
+        <label for="fSize">Size</label>
+        <input id="fSize" placeholder="e.g. 10.5">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="fColor">Color</label>
+        <input id="fColor" placeholder="e.g. White/Red">
+      </div>
+      <div class="field">
+        <label for="fCondition">Condition</label>
+        <select id="fCondition">
+          <option>New</option>
+          <option selected>Good</option>
+          <option>Worn</option>
+          <option>Retired</option>
+        </select>
+      </div>
+    </div>
+    <input type="hidden" id="fId">
+    <input type="hidden" id="fPhotoData">
+    <div class="sheet-buttons">
+      <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<script>
+const STORAGE_KEY = 'shoeCollection';
+
+function loadShoes() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+function saveShoes(shoes) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(shoes));
+}
+
+let shoes = loadShoes();
+let editingId = null;
+
+const listEl = document.getElementById('list');
+const emptyState = document.getElementById('emptyState');
+const searchEl = document.getElementById('search');
+const sheet = document.getElementById('sheet');
+const backdrop = document.getElementById('backdrop');
+const form = document.getElementById('shoeForm');
+const photoInput = document.getElementById('photoInput');
+const photoPreview = document.getElementById('photoPreview');
+const fPhotoData = document.getElementById('fPhotoData');
+
+function render() {
+  const query = searchEl.value.trim().toLowerCase();
+  const filtered = shoes.filter(s =>
+    !query ||
+    s.name.toLowerCase().includes(query) ||
+    (s.brand || '').toLowerCase().includes(query) ||
+    (s.color || '').toLowerCase().includes(query)
+  );
+
+  document.getElementById('statTotal').textContent = shoes.length;
+  document.getElementById('statBrands').textContent = new Set(shoes.map(s => s.brand).filter(Boolean)).size;
+  document.getElementById('statWorn').textContent = shoes.filter(s => s.condition === 'Worn').length;
+
+  listEl.innerHTML = '';
+  emptyState.style.display = shoes.length === 0 ? 'block' : 'none';
+
+  filtered.slice().reverse().forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      ${s.photo ? `<img class="thumb" src="${s.photo}">` : `<div class="thumb">👟</div>`}
+      <div class="card-info">
+        <div class="name">${escapeHtml(s.name)}</div>
+        <div class="meta">${escapeHtml(s.brand || '')}${s.brand && s.size ? ' · ' : ''}${s.size ? 'Size ' + escapeHtml(s.size) : ''}</div>
+        <div class="meta">${escapeHtml(s.color || '')}${s.color && s.condition ? ' · ' : ''}${escapeHtml(s.condition || '')}</div>
+      </div>
+      <div class="card-actions">
+        <button class="icon-btn" data-edit="${s.id}" aria-label="Edit">✏️</button>
+        <button class="icon-btn" data-delete="${s.id}" aria-label="Delete">🗑️</button>
+      </div>
+    `;
+    listEl.appendChild(card);
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function openSheet(shoe) {
+  editingId = shoe ? shoe.id : null;
+  document.getElementById('sheetTitle').textContent = shoe ? 'Edit Shoe' : 'Add Shoe';
+  document.getElementById('fId').value = shoe ? shoe.id : '';
+  document.getElementById('fName').value = shoe ? shoe.name : '';
+  document.getElementById('fBrand').value = shoe ? shoe.brand || '' : '';
+  document.getElementById('fSize').value = shoe ? shoe.size || '' : '';
+  document.getElementById('fColor').value = shoe ? shoe.color || '' : '';
+  document.getElementById('fCondition').value = shoe ? shoe.condition || 'Good' : 'Good';
+  fPhotoData.value = shoe && shoe.photo ? shoe.photo : '';
+  updatePhotoPreview();
+  backdrop.classList.add('open');
+  sheet.classList.add('open');
+}
+
+function closeSheet() {
+  backdrop.classList.remove('open');
+  sheet.classList.remove('open');
+  form.reset();
+  editingId = null;
+}
+
+function updatePhotoPreview() {
+  if (fPhotoData.value) {
+    photoPreview.src = fPhotoData.value;
+  } else {
+    photoPreview.removeAttribute('src');
+    photoPreview.textContent = '👟';
+  }
+}
+
+document.getElementById('addBtn').addEventListener('click', () => openSheet(null));
+document.getElementById('cancelBtn').addEventListener('click', closeSheet);
+backdrop.addEventListener('click', closeSheet);
+
+document.getElementById('photoBtn').addEventListener('click', () => photoInput.click());
+photoInput.addEventListener('change', () => {
+  const file = photoInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    fPhotoData.value = e.target.result;
+    updatePhotoPreview();
+  };
+  reader.readAsDataURL(file);
+});
+
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const data = {
+    id: editingId || Date.now().toString(36) + Math.random().toString(36).slice(2),
+    name: document.getElementById('fName').value.trim(),
+    brand: document.getElementById('fBrand').value.trim(),
+    size: document.getElementById('fSize').value.trim(),
+    color: document.getElementById('fColor').value.trim(),
+    condition: document.getElementById('fCondition').value,
+    photo: fPhotoData.value || null,
+  };
+  if (editingId) {
+    shoes = shoes.map(s => s.id === editingId ? data : s);
+  } else {
+    shoes.push(data);
+  }
+  saveShoes(shoes);
+  closeSheet();
+  render();
+});
+
+listEl.addEventListener('click', e => {
+  const editId = e.target.closest('[data-edit]')?.dataset.edit;
+  const deleteId = e.target.closest('[data-delete]')?.dataset.delete;
+  if (editId) {
+    openSheet(shoes.find(s => s.id === editId));
+  } else if (deleteId) {
+    if (confirm('Remove this pair from your collection?')) {
+      shoes = shoes.filter(s => s.id !== deleteId);
+      saveShoes(shoes);
+      render();
+    }
+  }
+});
+
+searchEl.addEventListener('input', render);
+
+render();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
