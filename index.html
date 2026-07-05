@@ -176,6 +176,20 @@
     font-size: 15px;
     padding: 4px;
   }
+  .backup-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+  }
+  .link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: underline;
+    cursor: pointer;
+  }
   #titleInput {
     font-size: 22px;
     font-weight: 700;
@@ -311,8 +325,14 @@
     <div class="stat"><div class="num" id="statBrands">0</div><div class="label">Brands</div></div>
     <div class="stat"><div class="num" id="statWorn">0</div><div class="label">Worn</div></div>
     <div class="stat"><div class="num" id="statWears">0</div><div class="label">Total Wears</div></div>
+    <div class="stat"><div class="num" id="statSpent">$0</div><div class="label">Total Spent</div></div>
   </div>
   <input class="search" id="search" type="search" placeholder="Search by name, brand, or color...">
+  <div class="backup-row">
+    <button type="button" class="link-btn" id="exportBtn">Export backup</button>
+    <button type="button" class="link-btn" id="importBtn">Import backup</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none;">
+  </div>
 </header>
 
 <main id="list"></main>
@@ -361,9 +381,15 @@
         </select>
       </div>
     </div>
-    <div class="field">
-      <label for="fTimesWorn">Times Worn</label>
-      <input id="fTimesWorn" type="number" min="0" inputmode="numeric" placeholder="0">
+    <div class="row2">
+      <div class="field">
+        <label for="fTimesWorn">Times Worn</label>
+        <input id="fTimesWorn" type="number" min="0" inputmode="numeric" placeholder="0">
+      </div>
+      <div class="field">
+        <label for="fPrice">Price Paid ($)</label>
+        <input id="fPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+      </div>
     </div>
     <input type="hidden" id="fId">
     <input type="hidden" id="fPhotoData">
@@ -414,6 +440,8 @@ function render() {
   document.getElementById('statBrands').textContent = new Set(shoes.map(s => s.brand).filter(Boolean)).size;
   document.getElementById('statWorn').textContent = shoes.filter(s => s.condition === 'Worn').length;
   document.getElementById('statWears').textContent = shoes.reduce((sum, s) => sum + (parseInt(s.timesWorn) || 0), 0);
+  const totalSpent = shoes.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
+  document.getElementById('statSpent').textContent = '$' + totalSpent.toFixed(totalSpent % 1 === 0 ? 0 : 2);
 
   listEl.innerHTML = '';
   emptyState.style.display = shoes.length === 0 ? 'block' : 'none';
@@ -429,6 +457,7 @@ function render() {
           <div class="name">${escapeHtml(s.name)}</div>
           <div class="meta">${escapeHtml(s.brand || '')}${s.brand && s.size ? ' · ' : ''}${s.size ? 'Size ' + escapeHtml(s.size) : ''}</div>
           <div class="meta">${escapeHtml(s.color || '')}${s.color && s.condition ? ' · ' : ''}${escapeHtml(s.condition || '')}</div>
+          ${s.price ? `<div class="meta">$${parseFloat(s.price).toFixed(2)}</div>` : ''}
         </div>
         <div class="card-actions">
           <button class="icon-btn" data-edit="${s.id}" aria-label="Edit">✏️</button>
@@ -460,6 +489,7 @@ function openSheet(shoe) {
   document.getElementById('fColor').value = shoe ? shoe.color || '' : '';
   document.getElementById('fCondition').value = shoe ? shoe.condition || 'Good' : 'Good';
   document.getElementById('fTimesWorn').value = shoe ? shoe.timesWorn || 0 : 0;
+  document.getElementById('fPrice').value = shoe && shoe.price ? shoe.price : '';
   fPhotoData.value = shoe && shoe.photo ? shoe.photo : '';
   updatePhotoPreview();
   backdrop.classList.add('open');
@@ -508,6 +538,7 @@ form.addEventListener('submit', e => {
     color: document.getElementById('fColor').value.trim(),
     condition: document.getElementById('fCondition').value,
     timesWorn: Math.max(0, parseInt(document.getElementById('fTimesWorn').value) || 0),
+    price: Math.max(0, parseFloat(document.getElementById('fPrice').value) || 0),
     photo: fPhotoData.value || null,
   };
   if (editingId) {
@@ -579,6 +610,52 @@ editTitleBtn.addEventListener('click', () => {
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
   });
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const backup = { title: loadTitle(), shoes };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `shoe-collection-backup-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+const importFileInput = document.getElementById('importFile');
+document.getElementById('importBtn').addEventListener('click', () => importFileInput.click());
+importFileInput.addEventListener('change', () => {
+  const file = importFileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    let backup;
+    try {
+      backup = JSON.parse(e.target.result);
+    } catch {
+      alert('That file is not a valid backup.');
+      importFileInput.value = '';
+      return;
+    }
+    if (!backup || !Array.isArray(backup.shoes)) {
+      alert('That file is not a valid backup.');
+      importFileInput.value = '';
+      return;
+    }
+    if (confirm(`Import ${backup.shoes.length} shoes? This will replace your current collection.`)) {
+      shoes = backup.shoes;
+      saveShoes(shoes);
+      if (backup.title) {
+        localStorage.setItem(TITLE_KEY, backup.title);
+        applyTitle(backup.title);
+      }
+      render();
+    }
+    importFileInput.value = '';
+  };
+  reader.readAsText(file);
 });
 
 render();
