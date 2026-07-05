@@ -642,16 +642,22 @@ onAuthStateChanged(auth, user => {
 
 function subscribeToUserData(uid) {
   const profileRef = doc(db, 'users', uid);
-  unsubscribeProfile = onSnapshot(profileRef, snap => {
-    const title = snap.exists() && snap.data().title ? snap.data().title : DEFAULT_TITLE;
-    applyTitle(title);
-  });
+  unsubscribeProfile = onSnapshot(profileRef,
+    snap => {
+      const title = snap.exists() && snap.data().title ? snap.data().title : DEFAULT_TITLE;
+      applyTitle(title);
+    },
+    err => alert('Could not load your profile: ' + err.message)
+  );
 
   const shoesRef = collection(db, 'users', uid, 'shoes');
-  unsubscribeShoes = onSnapshot(shoesRef, snap => {
-    shoes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    render();
-  });
+  unsubscribeShoes = onSnapshot(shoesRef,
+    snap => {
+      shoes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      render();
+    },
+    err => alert('Could not load your shoes: ' + err.message)
+  );
 }
 
 function applyTitle(title) {
@@ -675,7 +681,8 @@ editTitleBtn.addEventListener('click', () => {
     input.replaceWith(appTitleEl);
     editTitleBtn.style.visibility = 'visible';
     if (currentUser) {
-      setDoc(doc(db, 'users', currentUser.uid), { title: value }, { merge: true });
+      setDoc(doc(db, 'users', currentUser.uid), { title: value }, { merge: true })
+        .catch(err => alert('Could not save the title: ' + err.message));
     }
   }
 
@@ -861,12 +868,22 @@ form.addEventListener('submit', async e => {
     photo: fPhotoData.value || null,
   };
   const shoesRef = collection(db, 'users', currentUser.uid, 'shoes');
-  if (editingId) {
-    await updateDoc(doc(shoesRef, editingId), data);
-  } else {
-    await addDoc(shoesRef, { ...data, status: 'active', createdAtMs: Date.now(), createdAt: serverTimestamp() });
+  const saveBtn = form.querySelector('button[type="submit"]');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving...';
+  try {
+    if (editingId) {
+      await updateDoc(doc(shoesRef, editingId), data);
+    } else {
+      await addDoc(shoesRef, { ...data, status: 'active', createdAtMs: Date.now(), createdAt: serverTimestamp() });
+    }
+    closeSheet();
+  } catch (err) {
+    alert('Could not save this shoe: ' + err.message);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save';
   }
-  closeSheet();
 });
 
 listEl.addEventListener('click', async e => {
@@ -878,20 +895,24 @@ listEl.addEventListener('click', async e => {
   const restoreId = e.target.closest('[data-restore]')?.dataset.restore;
   const shoesRef = collection(db, 'users', currentUser.uid, 'shoes');
 
-  if (editId) {
-    openSheet(shoes.find(s => s.id === editId));
-  } else if (deleteId) {
-    if (confirm('Permanently delete this pair? This cannot be undone.')) {
-      await deleteDoc(doc(shoesRef, deleteId));
+  try {
+    if (editId) {
+      openSheet(shoes.find(s => s.id === editId));
+    } else if (deleteId) {
+      if (confirm('Permanently delete this pair? This cannot be undone.')) {
+        await deleteDoc(doc(shoesRef, deleteId));
+      }
+    } else if (wearId) {
+      await updateDoc(doc(shoesRef, wearId), { timesWorn: increment(1) });
+    } else if (donateId) {
+      if (confirm('Move this pair to your donated archive? It stays saved, just out of your active collection.')) {
+        await updateDoc(doc(shoesRef, donateId), { status: 'donated', donatedAt: serverTimestamp() });
+      }
+    } else if (restoreId) {
+      await updateDoc(doc(shoesRef, restoreId), { status: 'active', donatedAt: null });
     }
-  } else if (wearId) {
-    await updateDoc(doc(shoesRef, wearId), { timesWorn: increment(1) });
-  } else if (donateId) {
-    if (confirm('Move this pair to your donated archive? It stays saved, just out of your active collection.')) {
-      await updateDoc(doc(shoesRef, donateId), { status: 'donated', donatedAt: serverTimestamp() });
-    }
-  } else if (restoreId) {
-    await updateDoc(doc(shoesRef, restoreId), { status: 'active', donatedAt: null });
+  } catch (err) {
+    alert('Something went wrong: ' + err.message);
   }
 });
 
