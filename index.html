@@ -103,8 +103,22 @@
     border-radius: 14px;
     padding: 12px;
     display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .card-top {
+    display: flex;
     gap: 12px;
     align-items: center;
+  }
+  .card-wear {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--muted);
   }
   .thumb {
     width: 64px;
@@ -142,6 +156,36 @@
     padding: 6px;
     cursor: pointer;
     color: var(--muted);
+  }
+  .wear-btn {
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 5px 8px;
+    color: var(--text);
+  }
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .title-row h1 { margin: 0; }
+  .title-row .icon-btn {
+    font-size: 15px;
+    padding: 4px;
+  }
+  #titleInput {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: inherit;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px 6px;
+    width: 100%;
   }
   .fab {
     position: fixed;
@@ -258,11 +302,15 @@
 <body>
 
 <header>
-  <h1>My Shoe Collection</h1>
+  <div class="title-row">
+    <h1 id="appTitle">My Shoe Collection</h1>
+    <button class="icon-btn" id="editTitleBtn" aria-label="Rename collection">✏️</button>
+  </div>
   <div class="stats">
     <div class="stat"><div class="num" id="statTotal">0</div><div class="label">Pairs</div></div>
     <div class="stat"><div class="num" id="statBrands">0</div><div class="label">Brands</div></div>
     <div class="stat"><div class="num" id="statWorn">0</div><div class="label">Worn</div></div>
+    <div class="stat"><div class="num" id="statWears">0</div><div class="label">Total Wears</div></div>
   </div>
   <input class="search" id="search" type="search" placeholder="Search by name, brand, or color...">
 </header>
@@ -313,6 +361,10 @@
         </select>
       </div>
     </div>
+    <div class="field">
+      <label for="fTimesWorn">Times Worn</label>
+      <input id="fTimesWorn" type="number" min="0" inputmode="numeric" placeholder="0">
+    </div>
     <input type="hidden" id="fId">
     <input type="hidden" id="fPhotoData">
     <div class="sheet-buttons">
@@ -361,6 +413,7 @@ function render() {
   document.getElementById('statTotal').textContent = shoes.length;
   document.getElementById('statBrands').textContent = new Set(shoes.map(s => s.brand).filter(Boolean)).size;
   document.getElementById('statWorn').textContent = shoes.filter(s => s.condition === 'Worn').length;
+  document.getElementById('statWears').textContent = shoes.reduce((sum, s) => sum + (parseInt(s.timesWorn) || 0), 0);
 
   listEl.innerHTML = '';
   emptyState.style.display = shoes.length === 0 ? 'block' : 'none';
@@ -368,16 +421,23 @@ function render() {
   filtered.slice().reverse().forEach(s => {
     const card = document.createElement('div');
     card.className = 'card';
+    const timesWorn = parseInt(s.timesWorn) || 0;
     card.innerHTML = `
-      ${s.photo ? `<img class="thumb" src="${s.photo}">` : `<div class="thumb">👟</div>`}
-      <div class="card-info">
-        <div class="name">${escapeHtml(s.name)}</div>
-        <div class="meta">${escapeHtml(s.brand || '')}${s.brand && s.size ? ' · ' : ''}${s.size ? 'Size ' + escapeHtml(s.size) : ''}</div>
-        <div class="meta">${escapeHtml(s.color || '')}${s.color && s.condition ? ' · ' : ''}${escapeHtml(s.condition || '')}</div>
+      <div class="card-top">
+        ${s.photo ? `<img class="thumb" src="${s.photo}">` : `<div class="thumb">👟</div>`}
+        <div class="card-info">
+          <div class="name">${escapeHtml(s.name)}</div>
+          <div class="meta">${escapeHtml(s.brand || '')}${s.brand && s.size ? ' · ' : ''}${s.size ? 'Size ' + escapeHtml(s.size) : ''}</div>
+          <div class="meta">${escapeHtml(s.color || '')}${s.color && s.condition ? ' · ' : ''}${escapeHtml(s.condition || '')}</div>
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn" data-edit="${s.id}" aria-label="Edit">✏️</button>
+          <button class="icon-btn" data-delete="${s.id}" aria-label="Delete">🗑️</button>
+        </div>
       </div>
-      <div class="card-actions">
-        <button class="icon-btn" data-edit="${s.id}" aria-label="Edit">✏️</button>
-        <button class="icon-btn" data-delete="${s.id}" aria-label="Delete">🗑️</button>
+      <div class="card-wear">
+        <span>Worn ${timesWorn}x</span>
+        <button class="wear-btn" data-wear="${s.id}" aria-label="Add a wear">+1 Wear</button>
       </div>
     `;
     listEl.appendChild(card);
@@ -399,6 +459,7 @@ function openSheet(shoe) {
   document.getElementById('fSize').value = shoe ? shoe.size || '' : '';
   document.getElementById('fColor').value = shoe ? shoe.color || '' : '';
   document.getElementById('fCondition').value = shoe ? shoe.condition || 'Good' : 'Good';
+  document.getElementById('fTimesWorn').value = shoe ? shoe.timesWorn || 0 : 0;
   fPhotoData.value = shoe && shoe.photo ? shoe.photo : '';
   updatePhotoPreview();
   backdrop.classList.add('open');
@@ -446,6 +507,7 @@ form.addEventListener('submit', e => {
     size: document.getElementById('fSize').value.trim(),
     color: document.getElementById('fColor').value.trim(),
     condition: document.getElementById('fCondition').value,
+    timesWorn: Math.max(0, parseInt(document.getElementById('fTimesWorn').value) || 0),
     photo: fPhotoData.value || null,
   };
   if (editingId) {
@@ -461,6 +523,7 @@ form.addEventListener('submit', e => {
 listEl.addEventListener('click', e => {
   const editId = e.target.closest('[data-edit]')?.dataset.edit;
   const deleteId = e.target.closest('[data-delete]')?.dataset.delete;
+  const wearId = e.target.closest('[data-wear]')?.dataset.wear;
   if (editId) {
     openSheet(shoes.find(s => s.id === editId));
   } else if (deleteId) {
@@ -469,10 +532,54 @@ listEl.addEventListener('click', e => {
       saveShoes(shoes);
       render();
     }
+  } else if (wearId) {
+    shoes = shoes.map(s => s.id === wearId ? { ...s, timesWorn: (parseInt(s.timesWorn) || 0) + 1 } : s);
+    saveShoes(shoes);
+    render();
   }
 });
 
 searchEl.addEventListener('input', render);
+
+const TITLE_KEY = 'shoeAppTitle';
+const DEFAULT_TITLE = 'My Shoe Collection';
+const appTitleEl = document.getElementById('appTitle');
+const editTitleBtn = document.getElementById('editTitleBtn');
+
+function loadTitle() {
+  return localStorage.getItem(TITLE_KEY) || DEFAULT_TITLE;
+}
+
+function applyTitle(title) {
+  appTitleEl.textContent = title;
+  document.title = title;
+}
+
+applyTitle(loadTitle());
+
+editTitleBtn.addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.id = 'titleInput';
+  input.value = appTitleEl.textContent;
+  input.maxLength = 40;
+  appTitleEl.replaceWith(input);
+  editTitleBtn.style.visibility = 'hidden';
+  input.focus();
+  input.select();
+
+  function commit() {
+    const value = input.value.trim() || DEFAULT_TITLE;
+    localStorage.setItem(TITLE_KEY, value);
+    applyTitle(value);
+    input.replaceWith(appTitleEl);
+    editTitleBtn.style.visibility = 'visible';
+  }
+
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+  });
+});
 
 render();
 
