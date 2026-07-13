@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>My Shoe Collection</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#b5502e">
@@ -46,7 +46,7 @@
     position: sticky;
     top: 0;
     background: var(--bg);
-    padding: 20px 16px 12px;
+    padding: calc(20px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 12px calc(16px + env(safe-area-inset-left));
     z-index: 10;
     border-bottom: 1px solid var(--border);
   }
@@ -125,6 +125,7 @@
   }
   .search {
     flex: 1;
+    min-width: 0;
     padding: 10px 12px;
     border-radius: 10px;
     border: 1px solid var(--border);
@@ -153,7 +154,7 @@
     cursor: pointer;
   }
   main {
-    padding: 12px 16px;
+    padding: 12px calc(16px + env(safe-area-inset-right)) 12px calc(16px + env(safe-area-inset-left));
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -255,8 +256,8 @@
   }
   .fab {
     position: fixed;
-    right: 20px;
-    bottom: 24px;
+    right: calc(20px + env(safe-area-inset-right));
+    bottom: calc(24px + env(safe-area-inset-bottom));
     width: 58px;
     height: 58px;
     border-radius: 50%;
@@ -364,6 +365,34 @@
     border: 1px solid var(--danger);
   }
 
+  /* Cleaning reminder banner */
+  .clean-banner {
+    margin: 12px calc(16px + env(safe-area-inset-right)) 0 calc(16px + env(safe-area-inset-left));
+    background: var(--card);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+  }
+  .clean-banner .cb-text { flex: 1; min-width: 0; }
+  .clean-banner .cb-title { font-weight: 600; margin-bottom: 2px; }
+  .clean-banner .cb-list { color: var(--muted); font-size: 13px; }
+  .clean-banner .cb-dismiss {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1;
+    padding: 2px 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .clean-count { color: var(--muted); }
+  .clean-count.due { color: var(--accent); font-weight: 600; }
+
   /* Auth screen */
   .auth-screen {
     min-height: 100vh;
@@ -435,6 +464,7 @@
       <div class="title-left">
         <h1 id="appTitle">My Shoe Collection</h1>
         <button class="icon-btn" id="editTitleBtn" aria-label="Rename collection">✏️</button>
+        <button class="icon-btn" id="settingsBtn" aria-label="Settings">⚙️</button>
       </div>
       <div class="user-chip">
         <span class="user-email" id="userEmail"></span>
@@ -460,6 +490,8 @@
       <button type="button" class="link-btn" id="toggleDonatedBtn">Show donated (0)</button>
     </div>
   </header>
+
+  <div class="clean-banner hidden" id="cleanBanner"></div>
 
   <main id="list"></main>
 
@@ -506,6 +538,10 @@
           <input id="fPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
         </div>
       </div>
+      <div class="field">
+        <label for="fCleanEvery">Clean after this many wears</label>
+        <input id="fCleanEvery" type="number" min="0" inputmode="numeric" placeholder="Leave blank to use your default">
+      </div>
       <input type="hidden" id="fId">
       <input type="hidden" id="fPhotoData">
       <div class="sheet-buttons">
@@ -513,6 +549,26 @@
         <button type="submit" class="btn btn-primary">Save</button>
       </div>
     </form>
+  </div>
+
+  <div class="sheet" id="settingsSheet">
+    <h2>Cleaning Reminders</h2>
+    <div class="field">
+      <label for="setCleanEvery">Remind me to clean a shoe every … wears</label>
+      <input id="setCleanEvery" type="number" min="0" inputmode="numeric" placeholder="e.g. 5 — leave blank to turn off">
+    </div>
+    <div class="field">
+      <label for="setAlertMode">When should I remind you?</label>
+      <select id="setAlertMode">
+        <option value="perWear">Right away, as each shoe is worn</option>
+        <option value="weekly">Once a week, all at once</option>
+      </select>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin:2px 0 14px;">This is your default for every shoe. You can set a different number on an individual shoe when you add or edit it.</p>
+    <div class="sheet-buttons">
+      <button type="button" class="btn btn-secondary" id="settingsCancelBtn">Cancel</button>
+      <button type="button" class="btn btn-primary" id="settingsSaveBtn">Save</button>
+    </div>
   </div>
 </div>
 
@@ -550,6 +606,11 @@ let currentUser = null;
 let unsubscribeShoes = null;
 let unsubscribeProfile = null;
 let showDonated = false;
+let cleanEveryDefault = 5;
+let alertMode = 'perWear';
+let cleanBannerDismissedAt = 0;
+let sessionBannerDismissed = false;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 const authScreen = document.getElementById('authScreen');
 const appEl = document.getElementById('app');
@@ -571,6 +632,8 @@ const fPhotoData = document.getElementById('fPhotoData');
 const appTitleEl = document.getElementById('appTitle');
 const editTitleBtn = document.getElementById('editTitleBtn');
 const userEmailEl = document.getElementById('userEmail');
+const settingsSheet = document.getElementById('settingsSheet');
+const cleanBanner = document.getElementById('cleanBanner');
 
 function setAuthError(msg) {
   authError.textContent = msg || '';
@@ -644,8 +707,12 @@ function subscribeToUserData(uid) {
   const profileRef = doc(db, 'users', uid);
   unsubscribeProfile = onSnapshot(profileRef,
     snap => {
-      const title = snap.exists() && snap.data().title ? snap.data().title : DEFAULT_TITLE;
-      applyTitle(title);
+      const data = snap.exists() ? snap.data() : {};
+      applyTitle(data.title || DEFAULT_TITLE);
+      cleanEveryDefault = data.cleanEveryDefault != null ? data.cleanEveryDefault : 5;
+      alertMode = data.alertMode === 'weekly' ? 'weekly' : 'perWear';
+      cleanBannerDismissedAt = data.cleanBannerDismissedAt || 0;
+      render();
     },
     err => alert('Could not load your profile: ' + err.message)
   );
@@ -698,6 +765,24 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function cleanThreshold(shoe) {
+  const per = parseInt(shoe.cleanEvery);
+  if (Number.isFinite(per) && per > 0) return per;
+  return cleanEveryDefault > 0 ? cleanEveryDefault : 0;
+}
+
+function wearsSinceClean(shoe) {
+  // Existing shoes have no counter yet; fall back to total wears until first clean.
+  return shoe.wearsSinceClean != null
+    ? (parseInt(shoe.wearsSinceClean) || 0)
+    : (parseInt(shoe.timesWorn) || 0);
+}
+
+function isDueForClean(shoe) {
+  const t = cleanThreshold(shoe);
+  return t > 0 && wearsSinceClean(shoe) >= t;
+}
+
 function sortShoes(list, mode) {
   const copy = list.slice();
   if (mode === 'name') {
@@ -730,6 +815,8 @@ function render() {
   document.getElementById('statSpent').textContent = '$' + totalSpent.toFixed(totalSpent % 1 === 0 ? 0 : 2);
   toggleDonatedBtn.textContent = `${showDonated ? 'Hide' : 'Show'} donated (${donated.length})`;
 
+  renderCleanBanner(active);
+
   const activeFiltered = sortShoes(active.filter(matches), sortSelect.value);
   const donatedFiltered = sortShoes(donated.filter(matches), sortSelect.value);
 
@@ -747,10 +834,66 @@ function render() {
   }
 }
 
+function renderCleanBanner(active) {
+  const due = active.filter(isDueForClean);
+  let show = due.length > 0;
+
+  if (show) {
+    if (alertMode === 'weekly') {
+      show = (Date.now() - (cleanBannerDismissedAt || 0)) >= WEEK_MS;
+    } else {
+      show = !sessionBannerDismissed;
+    }
+  }
+
+  if (!show) {
+    cleanBanner.classList.add('hidden');
+    cleanBanner.innerHTML = '';
+    return;
+  }
+
+  const names = due
+    .map(s => `${escapeHtml(s.name)} (worn ${wearsSinceClean(s)}×)`)
+    .join(', ');
+  const title = due.length === 1
+    ? 'Time to clean a pair'
+    : `Time to clean ${due.length} pairs`;
+
+  cleanBanner.innerHTML = `
+    <div class="cb-text">
+      <div class="cb-title">🧼 ${title}</div>
+      <div class="cb-list">${names}</div>
+    </div>
+    <button class="cb-dismiss" id="cleanBannerDismiss" aria-label="Dismiss">✕</button>
+  `;
+  cleanBanner.classList.remove('hidden');
+  document.getElementById('cleanBannerDismiss').addEventListener('click', dismissCleanBanner);
+}
+
+function dismissCleanBanner() {
+  if (alertMode === 'weekly') {
+    cleanBannerDismissedAt = Date.now();
+    cleanBanner.classList.add('hidden');
+    if (currentUser) {
+      setDoc(doc(db, 'users', currentUser.uid), { cleanBannerDismissedAt }, { merge: true })
+        .catch(() => {});
+    }
+  } else {
+    sessionBannerDismissed = true;
+    cleanBanner.classList.add('hidden');
+  }
+}
+
 function renderCard(s, isDonated) {
   const card = document.createElement('div');
   card.className = 'card' + (isDonated ? ' donated' : '');
   const timesWorn = parseInt(s.timesWorn) || 0;
+  const threshold = cleanThreshold(s);
+  const sinceClean = wearsSinceClean(s);
+  const due = isDueForClean(s);
+  const cleanInfo = (!isDonated && threshold > 0)
+    ? ` · <span class="clean-count${due ? ' due' : ''}">${sinceClean}/${threshold} since clean${due ? ' 🧼' : ''}</span>`
+    : '';
   card.innerHTML = `
     <div class="card-top">
       ${s.photo ? `<img class="thumb" src="${s.photo}">` : `<div class="thumb">👟</div>`}
@@ -766,11 +909,12 @@ function renderCard(s, isDonated) {
       </div>
     </div>
     <div class="card-wear">
-      <span>Worn ${timesWorn}x</span>
+      <span>Worn ${timesWorn}×${cleanInfo}</span>
       <div class="small-btn-row">
         ${isDonated
           ? `<button class="small-btn" data-restore="${s.id}">Restore</button>`
           : `<button class="wear-btn" data-wear="${s.id}" aria-label="Add a wear">+1 Wear</button>
+             ${sinceClean > 0 ? `<button class="small-btn" data-clean="${s.id}">🧼 Cleaned</button>` : ''}
              <button class="small-btn donate-btn" data-donate="${s.id}">Donate</button>`
         }
       </div>
@@ -789,6 +933,7 @@ function openSheet(shoe) {
   document.getElementById('fColor').value = shoe ? shoe.color || '' : '';
   document.getElementById('fTimesWorn').value = shoe ? shoe.timesWorn || 0 : 0;
   document.getElementById('fPrice').value = shoe && shoe.price ? shoe.price : '';
+  document.getElementById('fCleanEvery').value = shoe && shoe.cleanEvery ? shoe.cleanEvery : '';
   fPhotoData.value = shoe && shoe.photo ? shoe.photo : '';
   updatePhotoPreview();
   backdrop.classList.add('open');
@@ -841,7 +986,7 @@ function resizeImageFile(file, maxDim = 480, quality = 0.8) {
 
 document.getElementById('addBtn').addEventListener('click', () => openSheet(null));
 document.getElementById('cancelBtn').addEventListener('click', closeSheet);
-backdrop.addEventListener('click', closeSheet);
+backdrop.addEventListener('click', () => { closeSheet(); closeSettings(); });
 
 document.getElementById('photoBtn').addEventListener('click', () => photoInput.click());
 photoInput.addEventListener('change', async () => {
@@ -858,6 +1003,8 @@ photoInput.addEventListener('change', async () => {
 form.addEventListener('submit', async e => {
   e.preventDefault();
   if (!currentUser) return;
+  const cleanEveryRaw = document.getElementById('fCleanEvery').value.trim();
+  const cleanEveryVal = cleanEveryRaw === '' ? null : (Math.max(0, parseInt(cleanEveryRaw) || 0) || null);
   const data = {
     name: document.getElementById('fName').value.trim(),
     brand: document.getElementById('fBrand').value.trim(),
@@ -865,6 +1012,7 @@ form.addEventListener('submit', async e => {
     color: document.getElementById('fColor').value.trim(),
     timesWorn: Math.max(0, parseInt(document.getElementById('fTimesWorn').value) || 0),
     price: Math.max(0, parseFloat(document.getElementById('fPrice').value) || 0),
+    cleanEvery: cleanEveryVal,
     photo: fPhotoData.value || null,
   };
   const shoesRef = collection(db, 'users', currentUser.uid, 'shoes');
@@ -875,7 +1023,7 @@ form.addEventListener('submit', async e => {
     if (editingId) {
       await updateDoc(doc(shoesRef, editingId), data);
     } else {
-      await addDoc(shoesRef, { ...data, status: 'active', createdAtMs: Date.now(), createdAt: serverTimestamp() });
+      await addDoc(shoesRef, { ...data, status: 'active', wearsSinceClean: 0, createdAtMs: Date.now(), createdAt: serverTimestamp() });
     }
     closeSheet();
   } catch (err) {
@@ -891,6 +1039,7 @@ listEl.addEventListener('click', async e => {
   const editId = e.target.closest('[data-edit]')?.dataset.edit;
   const deleteId = e.target.closest('[data-delete]')?.dataset.delete;
   const wearId = e.target.closest('[data-wear]')?.dataset.wear;
+  const cleanId = e.target.closest('[data-clean]')?.dataset.clean;
   const donateId = e.target.closest('[data-donate]')?.dataset.donate;
   const restoreId = e.target.closest('[data-restore]')?.dataset.restore;
   const shoesRef = collection(db, 'users', currentUser.uid, 'shoes');
@@ -903,7 +1052,13 @@ listEl.addEventListener('click', async e => {
         await deleteDoc(doc(shoesRef, deleteId));
       }
     } else if (wearId) {
-      await updateDoc(doc(shoesRef, wearId), { timesWorn: increment(1) });
+      const shoe = shoes.find(s => s.id === wearId);
+      await updateDoc(doc(shoesRef, wearId), {
+        timesWorn: increment(1),
+        wearsSinceClean: wearsSinceClean(shoe) + 1,
+      });
+    } else if (cleanId) {
+      await updateDoc(doc(shoesRef, cleanId), { wearsSinceClean: 0, lastCleanedAt: serverTimestamp() });
     } else if (donateId) {
       if (confirm('Move this pair to your donated archive? It stays saved, just out of your active collection.')) {
         await updateDoc(doc(shoesRef, donateId), { status: 'donated', donatedAt: serverTimestamp() });
@@ -921,6 +1076,35 @@ sortSelect.addEventListener('change', render);
 toggleDonatedBtn.addEventListener('click', () => {
   showDonated = !showDonated;
   render();
+});
+
+function openSettings() {
+  document.getElementById('setCleanEvery').value = cleanEveryDefault > 0 ? cleanEveryDefault : '';
+  document.getElementById('setAlertMode').value = alertMode;
+  backdrop.classList.add('open');
+  settingsSheet.classList.add('open');
+}
+
+function closeSettings() {
+  backdrop.classList.remove('open');
+  settingsSheet.classList.remove('open');
+}
+
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('settingsCancelBtn').addEventListener('click', closeSettings);
+
+document.getElementById('settingsSaveBtn').addEventListener('click', async () => {
+  if (!currentUser) return;
+  const raw = document.getElementById('setCleanEvery').value.trim();
+  const value = raw === '' ? 0 : Math.max(0, parseInt(raw) || 0);
+  const mode = document.getElementById('setAlertMode').value === 'weekly' ? 'weekly' : 'perWear';
+  try {
+    await setDoc(doc(db, 'users', currentUser.uid),
+      { cleanEveryDefault: value, alertMode: mode }, { merge: true });
+    closeSettings();
+  } catch (err) {
+    alert('Could not save your settings: ' + err.message);
+  }
 });
 
 if ('serviceWorker' in navigator) {
