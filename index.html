@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>My Shoe Collection</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#b5502e">
+<meta name="theme-color" content="#6d4bff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Shoes">
@@ -13,25 +13,39 @@
 <link rel="icon" href="icons/icon-192.png">
 <style>
   :root {
-    --bg: #f4f3f1;
+    --bg: #f4f5fb;
     --card: #ffffff;
-    --text: #1c1b1a;
-    --muted: #6b6863;
-    --accent: #b5502e;
+    --text: #14131c;
+    --muted: #6c6a7d;
+    --accent: #6d4bff;
+    --accent-2: #b13bff;
+    --accent-grad: linear-gradient(135deg, #6d4bff 0%, #b13bff 100%);
+    --accent-soft: rgba(109, 75, 255, 0.10);
     --accent-text: #ffffff;
-    --border: #e5e2dd;
-    --danger: #b3261e;
+    --border: #e7e7f2;
+    --danger: #e5484d;
+    --shadow-sm: 0 2px 8px rgba(20, 19, 40, 0.06);
+    --shadow-md: 0 8px 24px rgba(20, 19, 40, 0.09);
+    --shadow-accent: 0 8px 22px rgba(109, 75, 255, 0.35);
+    --radius: 18px;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #171615;
-      --card: #232220;
-      --text: #f2f0ed;
-      --muted: #a39e97;
-      --accent: #d9764f;
-      --accent-text: #1c1b1a;
-      --border: #34322f;
+      --bg: #0d0c14;
+      --card: #1a1826;
+      --text: #f3f2fa;
+      --muted: #9c99b3;
+      --accent: #8b6dff;
+      --accent-2: #c56bff;
+      --accent-grad: linear-gradient(135deg, #8b6dff 0%, #c56bff 100%);
+      --accent-soft: rgba(139, 109, 255, 0.16);
+      --accent-text: #ffffff;
+      --border: #2a2740;
       --danger: #ff6b60;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.5);
+      --shadow-accent: 0 8px 22px rgba(139, 109, 255, 0.4);
+      --radius: 18px;
     }
   }
   * { box-sizing: border-box; }
@@ -41,17 +55,22 @@
     background: var(--bg);
     color: var(--text);
     padding-bottom: 100px;
+    -webkit-font-smoothing: antialiased;
   }
   header {
     position: sticky;
     top: 0;
-    background: var(--bg);
-    padding: calc(20px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 12px calc(16px + env(safe-area-inset-left));
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: saturate(180%) blur(18px);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    padding: calc(18px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 14px calc(16px + env(safe-area-inset-left));
     z-index: 10;
     border-bottom: 1px solid var(--border);
   }
   h1 {
-    font-size: 22px;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     margin: 0 0 4px;
   }
   .title-row {
@@ -97,26 +116,35 @@
     width: 100%;
   }
   .stats {
-    display: flex;
-    gap: 16px;
-    margin-top: 10px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 14px;
   }
   .stat {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 14px;
-    flex: 1;
-    min-width: 90px;
+    border-radius: 14px;
+    padding: 12px 10px;
+    box-shadow: var(--shadow-sm);
+    text-align: center;
   }
   .stat .num {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
   }
   .stat .label {
-    font-size: 12px;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
     color: var(--muted);
+    margin-top: 3px;
+  }
+  @media (max-width: 430px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
   }
   .controls-row {
     display: flex;
@@ -126,20 +154,28 @@
   .search {
     flex: 1;
     min-width: 0;
-    padding: 10px 12px;
-    border-radius: 10px;
+    padding: 11px 14px;
+    border-radius: 12px;
     border: 1px solid var(--border);
     background: var(--card);
     color: var(--text);
     font-size: 15px;
+    box-shadow: var(--shadow-sm);
   }
   .sort-select {
-    padding: 10px 12px;
-    border-radius: 10px;
+    padding: 11px 12px;
+    border-radius: 12px;
     border: 1px solid var(--border);
     background: var(--card);
     color: var(--text);
     font-size: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+  .search:focus, .sort-select:focus,
+  .field input:focus, .field select:focus, #titleInput:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
   }
   .archive-toggle-row {
     margin-top: 10px;
@@ -175,13 +211,16 @@
   .card {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 12px;
+    border-radius: var(--radius);
+    padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
+    box-shadow: var(--shadow-md);
+    transition: transform 0.12s ease;
   }
-  .card.donated { opacity: 0.7; }
+  .card:active { transform: scale(0.99); }
+  .card.donated { opacity: 0.6; box-shadow: var(--shadow-sm); }
   .card-top {
     display: flex;
     gap: 12px;
@@ -199,21 +238,22 @@
     flex-wrap: wrap;
   }
   .thumb {
-    width: 64px;
-    height: 64px;
-    border-radius: 10px;
+    width: 66px;
+    height: 66px;
+    border-radius: 14px;
     object-fit: cover;
-    background: var(--bg);
+    background: var(--accent-soft);
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 26px;
   }
   .card-info { flex: 1; min-width: 0; }
   .card-info .name {
-    font-weight: 600;
-    font-size: 16px;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.01em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -236,15 +276,22 @@
     color: var(--muted);
   }
   .wear-btn, .small-btn {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 12.5px;
+    font-weight: 700;
     white-space: nowrap;
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 5px 8px;
+    border-radius: 999px;
+    padding: 7px 13px;
     color: var(--text);
-    background: none;
+    background: var(--card);
     cursor: pointer;
+    transition: transform 0.1s ease;
+  }
+  .wear-btn:active, .small-btn:active { transform: scale(0.93); }
+  .wear-btn {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: transparent;
   }
   .small-btn-row {
     display: flex;
@@ -252,23 +299,26 @@
   }
   .donate-btn {
     color: var(--accent);
-    border-color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   }
   .fab {
     position: fixed;
     right: calc(20px + env(safe-area-inset-right));
     bottom: calc(24px + env(safe-area-inset-bottom));
-    width: 58px;
-    height: 58px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
-    background: var(--accent);
-    color: var(--accent-text);
+    background: var(--accent-grad);
+    color: #fff;
     border: none;
-    font-size: 28px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    font-size: 30px;
+    line-height: 1;
+    box-shadow: var(--shadow-accent);
     cursor: pointer;
     z-index: 20;
+    transition: transform 0.12s ease;
   }
+  .fab:active { transform: scale(0.92); }
   .sheet-backdrop {
     position: fixed;
     inset: 0;
@@ -281,18 +331,30 @@
     position: fixed;
     left: 0; right: 0; bottom: 0;
     background: var(--card);
-    border-radius: 18px 18px 0 0;
-    padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+    border-radius: 26px 26px 0 0;
+    padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
     transform: translateY(100%);
-    transition: transform 0.25s ease;
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
     z-index: 31;
     max-height: 88vh;
     overflow-y: auto;
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.25);
+  }
+  .sheet::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border);
+    margin: -6px auto 16px;
   }
   .sheet.open { transform: translateY(0); }
   .sheet h2 {
-    margin: 0 0 14px;
-    font-size: 18px;
+    margin: 0 0 16px;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
   }
   .field {
     margin-bottom: 12px;
@@ -305,8 +367,8 @@
   }
   .field input, .field select {
     width: 100%;
-    padding: 10px 12px;
-    border-radius: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
     border: 1px solid var(--border);
     background: var(--bg);
     color: var(--text);
@@ -343,16 +405,19 @@
   }
   .btn {
     flex: 1;
-    padding: 12px;
-    border-radius: 10px;
+    padding: 13px;
+    border-radius: 13px;
     border: none;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.1s ease;
   }
+  .btn:active { transform: scale(0.97); }
   .btn-primary {
-    background: var(--accent);
-    color: var(--accent-text);
+    background: var(--accent-grad);
+    color: #fff;
+    box-shadow: var(--shadow-accent);
   }
   .btn-secondary {
     background: var(--bg);
@@ -367,18 +432,18 @@
 
   /* Cleaning reminder banner */
   .clean-banner {
-    margin: 12px calc(16px + env(safe-area-inset-right)) 0 calc(16px + env(safe-area-inset-left));
-    background: var(--card);
-    border: 1px solid var(--accent);
-    border-radius: 12px;
-    padding: 12px 14px;
+    margin: 14px calc(16px + env(safe-area-inset-right)) 0 calc(16px + env(safe-area-inset-left));
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    border-radius: var(--radius);
+    padding: 14px 16px;
     display: flex;
     align-items: flex-start;
     gap: 10px;
     font-size: 14px;
   }
   .clean-banner .cb-text { flex: 1; min-width: 0; }
-  .clean-banner .cb-title { font-weight: 600; margin-bottom: 2px; }
+  .clean-banner .cb-title { font-weight: 700; color: var(--accent); margin-bottom: 2px; }
   .clean-banner .cb-list { color: var(--muted); font-size: 13px; }
   .clean-banner .cb-dismiss {
     background: none;
@@ -401,16 +466,24 @@
     justify-content: center;
     padding: 24px;
   }
+  .auth-screen {
+    background:
+      radial-gradient(1100px 500px at 15% -10%, var(--accent-soft), transparent 60%),
+      radial-gradient(900px 500px at 100% 110%, var(--accent-soft), transparent 55%);
+  }
   .auth-card {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 24px;
+    border-radius: 22px;
+    padding: 28px 24px;
     width: 100%;
     max-width: 380px;
+    box-shadow: var(--shadow-md);
   }
   .auth-card h1 {
-    font-size: 20px;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     margin-bottom: 6px;
   }
   .auth-card p {
@@ -429,7 +502,38 @@
     font-size: 13px;
     margin-top: 10px;
     min-height: 16px;
+    line-height: 1.4;
   }
+  .auth-error.is-success { color: #12b76a; }
+  .auth-help {
+    margin-top: 18px;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+  .auth-help summary {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    cursor: pointer;
+    list-style: none;
+  }
+  .auth-help summary::-webkit-details-marker { display: none; }
+  .auth-help summary::after {
+    content: ' ›';
+    display: inline-block;
+    transition: transform 0.2s ease;
+  }
+  .auth-help[open] summary::after { transform: rotate(90deg); }
+  .auth-help-body {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .auth-help-body strong { color: var(--text); }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -455,6 +559,14 @@
     </div>
     <button type="button" class="link-btn" id="forgotPasswordBtn" style="margin-top:12px;">Forgot password?</button>
     <div class="auth-error" id="authError"></div>
+    <details class="auth-help">
+      <summary>Trouble signing in?</summary>
+      <div class="auth-help-body">
+        <p><strong>Signed up with Google?</strong> Just tap “Continue with Google” — there’s no separate password to remember.</p>
+        <p><strong>Used an email &amp; password?</strong> Type your email above and tap “Forgot password?” to get a reset link. Check your spam folder if it doesn’t arrive within a few minutes.</p>
+        <p><strong>Not sure which you used?</strong> Try “Continue with Google” first. Your shoes are saved under the login you first signed up with — a different login starts an empty collection, so recover the original rather than making a new account.</p>
+      </div>
+    </details>
   </div>
 </div>
 
@@ -635,8 +747,38 @@ const userEmailEl = document.getElementById('userEmail');
 const settingsSheet = document.getElementById('settingsSheet');
 const cleanBanner = document.getElementById('cleanBanner');
 
-function setAuthError(msg) {
+function setAuthError(msg, type) {
   authError.textContent = msg || '';
+  authError.classList.toggle('is-success', type === 'success');
+}
+
+function friendlyAuthError(err) {
+  const code = err && err.code ? err.code : '';
+  switch (code) {
+    case 'auth/invalid-email':
+      return "That doesn't look like a valid email address.";
+    case 'auth/missing-password':
+      return 'Please enter your password.';
+    case 'auth/weak-password':
+      return 'Your password should be at least 6 characters.';
+    case 'auth/email-already-in-use':
+      return 'An account with this email already exists — try Sign In instead, or “Forgot password?”.';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return "That email or password isn't right. If you signed up with Google, use “Continue with Google” instead.";
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please wait a minute and try again.';
+    case 'auth/network-request-failed':
+      return 'Network problem — check your connection and try again.';
+    case 'auth/popup-closed-by-user':
+    case 'auth/cancelled-popup-request':
+      return 'Google sign-in was cancelled. Tap “Continue with Google” to try again.';
+    default:
+      return (err && err.message)
+        ? err.message.replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim()
+        : 'Something went wrong. Please try again.';
+  }
 }
 
 document.getElementById('googleSignInBtn').addEventListener('click', async () => {
@@ -644,7 +786,7 @@ document.getElementById('googleSignInBtn').addEventListener('click', async () =>
   try {
     await signInWithPopup(auth, googleProvider);
   } catch (err) {
-    setAuthError(err.message);
+    setAuthError(friendlyAuthError(err));
   }
 });
 
@@ -653,7 +795,7 @@ document.getElementById('authSignInBtn').addEventListener('click', async () => {
   try {
     await signInWithEmailAndPassword(auth, authEmailInput.value.trim(), authPasswordInput.value);
   } catch (err) {
-    setAuthError(err.message);
+    setAuthError(friendlyAuthError(err));
   }
 });
 
@@ -662,7 +804,7 @@ document.getElementById('authSignUpBtn').addEventListener('click', async () => {
   try {
     await createUserWithEmailAndPassword(auth, authEmailInput.value.trim(), authPasswordInput.value);
   } catch (err) {
-    setAuthError(err.message);
+    setAuthError(friendlyAuthError(err));
   }
 });
 
@@ -670,14 +812,14 @@ document.getElementById('forgotPasswordBtn').addEventListener('click', async () 
   setAuthError('');
   const email = authEmailInput.value.trim();
   if (!email) {
-    setAuthError('Enter your email above first, then tap "Forgot password?" again.');
+    setAuthError('Enter your email above first, then tap “Forgot password?” again.');
     return;
   }
   try {
     await sendPasswordResetEmail(auth, email);
-    setAuthError('Password reset email sent.');
+    setAuthError('If an account uses that email, a reset link is on its way — check your inbox and spam folder. No email? You may have signed up with “Continue with Google”.', 'success');
   } catch (err) {
-    setAuthError(err.message);
+    setAuthError(friendlyAuthError(err));
   }
 });
 
